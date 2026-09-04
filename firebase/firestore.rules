@@ -1,0 +1,90 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function myUser() { return get(/databases/$(database)/documents/users/$(request.auth.uid)); }
+    function active() { return signedIn() && myUser().data.status == 'AKTIF'; }
+    function admin() { return active() && (myUser().data.role == 'ADMIN' || myUser().data.role == 'SUPER_ADMIN'); }
+    function superAdmin() { return active() && myUser().data.role == 'SUPER_ADMIN'; }
+    function isBootstrapEmail() {
+      return signedIn() && request.auth.token.email == 'arjune@gandekan.id' && request.auth.token.email_verified == true;
+    }
+    function publicDoc() { return resource.data.Aktif != false; }
+
+    match /settings/{id} {
+      allow read: if true;
+      allow write: if admin();
+    }
+
+    match /users/{uid} {
+      allow read: if signedIn() && (request.auth.uid == uid || admin());
+      allow create: if signedIn() && request.auth.uid == uid && (
+        (request.resource.data.role == 'WARGA' && request.resource.data.status == 'MENUNGGU') ||
+        (isBootstrapEmail() && request.resource.data.role == 'SUPER_ADMIN' && request.resource.data.status == 'AKTIF')
+      );
+      allow update: if admin() || (signedIn() && request.auth.uid == uid
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.status == resource.data.status
+        && request.resource.data.uid == resource.data.uid);
+      allow delete: if superAdmin();
+    }
+
+    match /warga/{id} {
+      allow read: if admin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow write: if admin();
+    }
+
+    match /ronda/{id} { allow read: if true; allow write: if admin(); }
+    match /rondaPetugas/{id} { allow read: if true; allow write: if admin(); }
+    match /rondaTukar/{id} { allow read: if true; allow write: if admin(); }
+    match /posyandu/{id} { allow read: if true; allow write: if admin(); }
+    match /kegiatan/{id} { allow read: if true; allow write: if admin(); }
+    match /keuangan/{id} { allow read: if true; allow write: if admin(); }
+    match /assets/{id} { allow read: if true; allow write: if admin(); }
+    match /pengumuman/{id} { allow read: if true; allow write: if admin(); }
+    match /documents/{id} { allow read: if resource.data.Publik == true || admin(); allow write: if admin(); }
+    match /notifications/{id} { allow read: if true; allow write: if admin(); }
+
+
+    match /complaintPublic/{id} {
+      allow read: if true;
+      allow create: if active()
+        && request.resource.data.ID == id
+        && request.resource.data.Status == 'BARU'
+        && request.resource.data.keys().hasOnly(['ID','Tanggal','kategori','judul','deskripsi','lokasi','lat','lng','Status','Aktif','createdAt','updatedAt']);
+      allow update, delete: if admin();
+    }
+
+    match /complaints/{id} {
+      allow create: if active() && request.resource.data.uid == request.auth.uid;
+      allow read: if admin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow update, delete: if admin();
+    }
+    match /feedback/{id} {
+      allow create: if active() && request.resource.data.uid == request.auth.uid;
+      allow read: if admin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow update, delete: if admin();
+    }
+    match /suratRequests/{id} {
+      allow create: if active() && request.resource.data.uid == request.auth.uid;
+      allow read: if admin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow update, delete: if admin();
+    }
+    match /loans/{id} {
+      allow create: if active() && request.resource.data.uid == request.auth.uid;
+      allow read: if admin() || (signedIn() && resource.data.uid == request.auth.uid);
+      allow update, delete: if admin();
+    }
+    match /rondaLaporan/{id} {
+      allow create: if active() && request.resource.data.uid == request.auth.uid;
+      allow read, update, delete: if admin();
+    }
+    match /surat/{id} { allow read, write: if admin(); }
+    match /laporanBulanan/{id} { allow read, write: if admin(); }
+
+    match /fcmTokens/{id} {
+      allow create, update, delete: if active() && request.resource.data.uid == request.auth.uid;
+      allow read: if admin() || (signedIn() && resource.data.uid == request.auth.uid);
+    }
+  }
+}
