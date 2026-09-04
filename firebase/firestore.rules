@@ -7,7 +7,7 @@ service cloud.firestore {
     function admin() { return active() && (myUser().data.role == 'ADMIN' || myUser().data.role == 'SUPER_ADMIN'); }
     function superAdmin() { return active() && myUser().data.role == 'SUPER_ADMIN'; }
     function isBootstrapEmail() {
-      return signedIn() && request.auth.token.email == 'arjune@gandekan.id' && request.auth.token.email_verified == true;
+      return signedIn() && request.auth.token.email == 'rt01rw04gandekan@gmail.com' && request.auth.token.email_verified == true;
     }
     function publicDoc() { return resource.data.Aktif != false; }
 
